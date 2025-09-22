@@ -9,7 +9,10 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Masuk'), backgroundColor: Colors.blue),
+      appBar: AppBar(
+        title: Text('Masuk'),
+        backgroundColor: const Color.fromARGB(255, 221, 160, 205),
+      ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
@@ -20,7 +23,7 @@ class LoginScreen extends StatelessWidget {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: Colors.blue,
+                color: const Color.fromARGB(255, 221, 160, 205),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.person, size: 50, color: Colors.white),
@@ -60,11 +63,11 @@ class LoginScreen extends StatelessWidget {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: const Color.fromARGB(255, 221, 160, 205),
                   padding: EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: Text(
-                  'MASUK',
+                  'LOGIN',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -75,7 +78,7 @@ class LoginScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("Belum punya akun? "),
+                Text("Dont Have Account? "),
                 TextButton(
                   onPressed: () {
                     // Navigasi ke RegisterScreen dengan push
@@ -86,7 +89,7 @@ class LoginScreen extends StatelessWidget {
                       ),
                     );
                   },
-                  child: Text('Daftar'),
+                  child: Text('Register'),
                 ),
               ],
             ),
