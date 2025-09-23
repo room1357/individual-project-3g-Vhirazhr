@@ -1,7 +1,8 @@
 # pemrograman_mobile
-Name : Fakhira Zahrany Nardin
-NIM  : 2341760172
-Class: 3G
+## Name : Fakhira Zahrany Nardin
+## NIM  : 2341760172
+## Class: 3G
+
 A new Flutter project.
 
 ## Getting Started
