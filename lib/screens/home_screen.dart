@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:pemrograman_mobile/screens/massages_screen.dart';
+import 'package:pemrograman_mobile/screens/profile_screen.dart';
+import 'package:pemrograman_mobile/screens/settings_screen.dart';
 
 import 'expense_list_screen.dart';
 import 'login_screen.dart';
@@ -42,7 +45,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    'Welcome User!',
+                    'Welcome Fakhira!',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -63,14 +66,24 @@ class HomeScreen extends StatelessWidget {
               leading: Icon(Icons.person),
               title: Text('Profile'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
               leading: Icon(Icons.settings),
               title: Text('Settings'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsScreen(),
+                  ),
+                );
               },
             ),
             Divider(),
@@ -81,7 +94,7 @@ class HomeScreen extends StatelessWidget {
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  (route) => false, // Hapus semua route sebelumnya
+                  (route) => false,
                 );
               },
             ),
@@ -122,23 +135,40 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
+                  _buildDashboardCard('Profile', Icons.person, Colors.blue, () {
+                    // Navigasi ke ExpenseListScreen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    );
+                  }),
                   _buildDashboardCard(
-                    'Profil',
-                    Icons.person,
-                    Colors.blue,
-                    null,
-                  ),
-                  _buildDashboardCard(
-                    'Pesan',
+                    'Messages',
                     Icons.message,
                     Colors.orange,
-                    null,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MessagesScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildDashboardCard(
-                    'Pengaturan',
+                    'Settings',
                     Icons.settings,
                     Colors.purple,
-                    null,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
