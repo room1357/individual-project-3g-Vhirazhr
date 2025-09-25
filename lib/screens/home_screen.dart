@@ -3,6 +3,7 @@ import 'package:pemrograman_mobile/screens/massages_screen.dart';
 import 'package:pemrograman_mobile/screens/profile_screen.dart';
 import 'package:pemrograman_mobile/screens/settings_screen.dart';
 
+import 'advanced_expense_list_screen.dart';
 import 'expense_list_screen.dart';
 import 'login_screen.dart';
 
@@ -166,6 +167,19 @@ class HomeScreen extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDashboardCard(
+                    'Advanced.EX',
+                    Icons.auto_graph,
+                    const Color.fromARGB(255, 203, 0, 0),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AdvancedExpenseListScreen(),
                         ),
                       );
                     },
