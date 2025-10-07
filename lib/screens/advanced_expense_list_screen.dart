@@ -4,6 +4,8 @@ import '../models/expense.dart';
 import '../services/expense_manager.dart';
 
 class AdvancedExpenseListScreen extends StatefulWidget {
+  const AdvancedExpenseListScreen({super.key});
+
   @override
   _AdvancedExpenseListScreenState createState() =>
       _AdvancedExpenseListScreenState();
@@ -47,7 +49,7 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
           ),
 
           // Category filter
-          Container(
+          SizedBox(
             height: 50,
             child: ListView(
               scrollDirection: Axis.horizontal,
@@ -290,7 +292,7 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
     IconData icon,
     Color color,
   ) {
-    return Container(
+    return SizedBox(
       width: 100,
       child: Column(
         children: [
