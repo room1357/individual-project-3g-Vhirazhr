@@ -35,22 +35,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     });
   }
 
-  // Generate tahun dari 2020 sampai sekarang
   List<String> get _availableYears {
     final currentYear = DateTime.now().year;
     final years = <String>[];
     for (int year = 2020; year <= currentYear; year++) {
       years.add(year.toString());
     }
-    return years.reversed.toList(); // Terbaru dulu
+    return years.reversed.toList();
   }
 
-  // Filter expenses berdasarkan waktu DAN tahun
   List<Expense> _getFilteredExpenses() {
     final now = DateTime.now();
     List<Expense> filtered = _allExpenses;
 
-    // Filter berdasarkan waktu
     switch (_selectedTimeFilter) {
       case 'Hari Ini':
         filtered =
@@ -99,14 +96,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         break;
 
       case 'Semua Waktu':
-        // Tetap filter berdasarkan tahun yang dipilih
         break;
     }
 
-    // Filter berdasarkan tahun (kecuali untuk Hari/Minggu/Bulan Ini)
-    if (_selectedTimeFilter != 'Hari Ini' &&
-        _selectedTimeFilter != 'Minggu Ini' &&
-        _selectedTimeFilter != 'Bulan Ini') {
+    // Hanya terapkan filter tahun untuk "Semua Waktu"
+    if (_selectedTimeFilter == 'Semua Waktu') {
       filtered =
           filtered
               .where((expense) => expense.date.year.toString() == _selectedYear)
@@ -116,7 +110,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return filtered;
   }
 
-  // Get kategori terpopuler untuk periode yang difilter
   Map<String, double> _getTopCategories(List<Expense> expenses) {
     final Map<String, double> categoryTotals = {};
     for (final expense in expenses) {
@@ -126,13 +119,151 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         ifAbsent: () => expense.amount,
       );
     }
-
-    // Sort by amount descending
     final sortedEntries =
         categoryTotals.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
-
     return Map.fromEntries(sortedEntries);
+  }
+
+  // NEW: Get daily breakdown for weekly trend
+  Map<String, double> _getDailyBreakdown(List<Expense> expenses) {
+    final Map<String, double> daily = {};
+    final days = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
+    ];
+
+    for (final day in days) {
+      daily[day] = 0.0;
+    }
+
+    for (final expense in expenses) {
+      final dayName = _getDayName(expense.date.weekday);
+      daily[dayName] = daily[dayName]! + expense.amount;
+    }
+
+    return daily;
+  }
+
+  // NEW: Get weekly breakdown for monthly trend
+  Map<String, double> _getWeeklyBreakdown(List<Expense> expenses) {
+    final Map<String, double> weekly = {};
+
+    for (int week = 1; week <= 5; week++) {
+      weekly['Minggu $week'] = 0.0;
+    }
+
+    for (final expense in expenses) {
+      final weekNumber = ((expense.date.day - 1) ~/ 7) + 1;
+      weekly['Minggu $weekNumber'] =
+          weekly['Minggu $weekNumber']! + expense.amount;
+    }
+
+    return weekly;
+  }
+
+  // NEW: Get monthly breakdown for yearly trend
+  Map<String, double> _getMonthlyBreakdown(List<Expense> expenses) {
+    final Map<String, double> monthly = {};
+    final months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    for (final month in months) {
+      monthly[month] = 0.0;
+    }
+
+    for (final expense in expenses) {
+      final monthName = _getMonthName(expense.date.month);
+      monthly[monthName] = monthly[monthName]! + expense.amount;
+    }
+
+    return monthly;
+  }
+
+  String _getDayName(int weekday) {
+    switch (weekday) {
+      case 1:
+        return 'Senin';
+      case 2:
+        return 'Selasa';
+      case 3:
+        return 'Rabu';
+      case 4:
+        return 'Kamis';
+      case 5:
+        return 'Jumat';
+      case 6:
+        return 'Sabtu';
+      case 7:
+        return 'Minggu';
+      default:
+        return '';
+    }
+  }
+
+  String _getMonthName(int month) {
+    switch (month) {
+      case 1:
+        return 'Januari';
+      case 2:
+        return 'Februari';
+      case 3:
+        return 'Maret';
+      case 4:
+        return 'April';
+      case 5:
+        return 'Mei';
+      case 6:
+        return 'Juni';
+      case 7:
+        return 'Juli';
+      case 8:
+        return 'Agustus';
+      case 9:
+        return 'September';
+      case 10:
+        return 'Oktober';
+      case 11:
+        return 'November';
+      case 12:
+        return 'Desember';
+      default:
+        return '';
+    }
+  }
+
+  String _getCurrentDateContext() {
+    final now = DateTime.now();
+    return '${_getDayName(now.weekday)}, ${now.day} ${_getMonthName(now.month)} ${now.year}';
+  }
+
+  String _getWeekRange() {
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final endOfWeek = startOfWeek.add(Duration(days: 6));
+    return '${startOfWeek.day}-${endOfWeek.day} ${_getMonthName(now.month)} ${now.year}';
+  }
+
+  String _getMonthContext() {
+    final now = DateTime.now();
+    return '${_getMonthName(now.month)} ${now.year}';
   }
 
   @override
@@ -169,21 +300,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       padding: EdgeInsets.all(16),
       child: Column(
         children: [
-          // Filter Waktu
-          _buildTimeFilter(),
+          // Filter Waktu dengan context
+          _buildTimeFilterWithContext(),
           SizedBox(height: 16),
 
-          // Filter Tahun (jika bukan hari/minggu/bulan ini)
-          if (_selectedTimeFilter != 'Hari Ini' &&
-              _selectedTimeFilter != 'Minggu Ini' &&
-              _selectedTimeFilter != 'Bulan Ini')
-            _buildYearFilter(),
-          if (_selectedTimeFilter != 'Hari Ini' &&
-              _selectedTimeFilter != 'Minggu Ini' &&
-              _selectedTimeFilter != 'Bulan Ini')
-            SizedBox(height: 16),
+          // Filter Tahun - HANYA untuk "Semua Waktu"
+          if (_selectedTimeFilter == 'Semua Waktu') _buildYearFilter(),
+          if (_selectedTimeFilter == 'Semua Waktu') SizedBox(height: 16),
 
-          // Summary
+          // Summary Cards
           _buildSummaryCards(
             totalAmount,
             filteredExpenses.length,
@@ -191,8 +316,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           ),
           SizedBox(height: 24),
 
-          // Trend berdasarkan filter
-          _buildTrendSection(filteredExpenses, categoryTotals),
+          // Trend Section dengan breakdown
+          _buildEnhancedTrendSection(filteredExpenses, categoryTotals),
           SizedBox(height: 24),
 
           // Breakdown Kategori
@@ -206,26 +331,50 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _buildTimeFilter() {
-    return SizedBox(
-      height: 50,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children:
-            _timeFilters.map((filter) {
-              return Padding(
-                padding: EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(filter),
-                  selected: _selectedTimeFilter == filter,
-                  onSelected:
-                      (selected) =>
-                          setState(() => _selectedTimeFilter = filter),
-                ),
-              );
-            }).toList(),
-      ),
+  Widget _buildTimeFilterWithContext() {
+    return Column(
+      children: [
+        SizedBox(
+          height: 50,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children:
+                _timeFilters.map((filter) {
+                  return Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(filter),
+                      selected: _selectedTimeFilter == filter,
+                      onSelected:
+                          (selected) =>
+                              setState(() => _selectedTimeFilter = filter),
+                    ),
+                  );
+                }).toList(),
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          _getTimeFilterContext(),
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
+      ],
     );
+  }
+
+  String _getTimeFilterContext() {
+    switch (_selectedTimeFilter) {
+      case 'Hari Ini':
+        return _getCurrentDateContext();
+      case 'Minggu Ini':
+        return _getWeekRange();
+      case 'Bulan Ini':
+        return _getMonthContext();
+      case 'Tahun Ini':
+        return 'Tahun ${DateTime.now().year}';
+      default:
+        return 'Semua Data';
+    }
   }
 
   Widget _buildYearFilter() {
@@ -289,7 +438,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _buildTrendSection(
+  Widget _buildEnhancedTrendSection(
     List<Expense> expenses,
     Map<String, double> topCategories,
   ) {
@@ -306,7 +455,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               'Trend $_selectedTimeFilter',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 12),
+            SizedBox(height: 16),
+
+            // Top Category
             if (topCategory != null) ...[
               Row(
                 children: [
@@ -333,14 +484,101 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 16),
             ],
+
+            // Breakdown berdasarkan filter
+            _buildTimeBasedBreakdown(expenses),
+
+            SizedBox(height: 8),
             Text(
               'Total ${expenses.length} transaksi dengan ${topCategories.length} kategori berbeda',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTimeBasedBreakdown(List<Expense> expenses) {
+    switch (_selectedTimeFilter) {
+      case 'Minggu Ini':
+        return _buildDailyBreakdownWidget(expenses);
+      case 'Bulan Ini':
+        return _buildWeeklyBreakdownWidget(expenses);
+      case 'Tahun Ini':
+        return _buildMonthlyBreakdownWidget(expenses);
+      default:
+        return SizedBox();
+    }
+  }
+
+  Widget _buildDailyBreakdownWidget(List<Expense> expenses) {
+    final dailyBreakdown = _getDailyBreakdown(expenses);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Breakdown Harian:',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        SizedBox(height: 8),
+        ...dailyBreakdown.entries.map(
+          (entry) => _buildBreakdownItem(entry.key, entry.value),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeeklyBreakdownWidget(List<Expense> expenses) {
+    final weeklyBreakdown = _getWeeklyBreakdown(expenses);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Breakdown Mingguan:',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        SizedBox(height: 8),
+        ...weeklyBreakdown.entries.map(
+          (entry) => _buildBreakdownItem(entry.key, entry.value),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMonthlyBreakdownWidget(List<Expense> expenses) {
+    final monthlyBreakdown = _getMonthlyBreakdown(expenses);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Breakdown Bulanan:',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        SizedBox(height: 8),
+        ...monthlyBreakdown.entries.map(
+          (entry) => _buildBreakdownItem(entry.key, entry.value),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBreakdownItem(String label, double amount) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: TextStyle(fontSize: 14))),
+          Text(
+            'Rp ${amount.toStringAsFixed(0)}',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }
