@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../models/expense.dart';
 import '../services/expense_manager.dart';
+import 'add_expense_screen.dart'; // IMPORT INI
+import 'edit_expense_screen.dart';
 
 class AdvancedExpenseListScreen extends StatefulWidget {
   const AdvancedExpenseListScreen({super.key});
@@ -219,7 +221,7 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
 
                 Divider(),
 
-                // List pengeluaran - TIDAK DIUBAH
+                // List pengeluaran - DIUBAH onTap-nya
                 filteredExpenses.isEmpty
                     ? Center(child: Text('Tidak ada pengeluaran ditemukan'))
                     : ListView.builder(
@@ -254,7 +256,11 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
                                 color: Colors.red[600],
                               ),
                             ),
-                            onTap: () => _showExpenseDetails(context, expense),
+                            onTap:
+                                () => _showExpenseOptions(
+                                  context,
+                                  expense,
+                                ), // DIUBAH
                           ),
                         );
                       },
@@ -263,6 +269,23 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
             ),
           ),
         ],
+      ),
+      // TAMBAHKAN FLOATING ACTION BUTTON INI
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Navigate ke AddExpenseScreen
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AddExpenseScreen()),
+          ).then((_) {
+            // Refresh data setelah kembali dari add screen
+            setState(() {
+              _filterExpenses();
+            });
+          });
+        },
+        backgroundColor: Colors.blue,
+        child: Icon(Icons.add),
       ),
     );
   }
@@ -375,8 +398,8 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
     return 'Rp ${avg.toStringAsFixed(0)}';
   }
 
-  // Dialog detail pengeluaran - TIDAK DIUBAH
-  void _showExpenseDetails(BuildContext context, Expense expense) {
+  // Method untuk menampilkan opsi (Edit/Hapus) dalam dialog - METHOD BARU
+  void _showExpenseOptions(BuildContext context, Expense expense) {
     showDialog(
       context: context,
       builder:
@@ -396,9 +419,83 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
               ],
             ),
             actions: [
+              // Tombol Hapus
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Tutup dialog
+                  _showDeleteConfirmation(
+                    context,
+                    expense,
+                  ); // Tampilkan konfirmasi hapus
+                },
+                child: Text('Hapus', style: TextStyle(color: Colors.red)),
+              ),
+              // Tombol Edit
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Tutup dialog
+                  // Navigate ke EditExpenseScreen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EditExpenseScreen(expense: expense),
+                    ),
+                  ).then((_) {
+                    // Refresh data setelah kembali dari edit screen
+                    setState(() {
+                      _filterExpenses();
+                    });
+                  });
+                },
+                child: Text('Edit', style: TextStyle(color: Colors.blue)),
+              ),
+              // Tombol Tutup
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text('Tutup'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // Method untuk konfirmasi hapus - METHOD BARU
+  void _showDeleteConfirmation(BuildContext context, Expense expense) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text('Hapus Pengeluaran?'),
+            content: Text(
+              'Apakah Anda yakin ingin menghapus "${expense.title}"? Tindakan ini tidak dapat dibatalkan.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () {
+                  // Hapus dari ExpenseManager
+                  ExpenseManager.removeExpense(expense.id);
+
+                  // Refresh filtered expenses
+                  setState(() {
+                    _filterExpenses();
+                  });
+
+                  // Tampilkan snackbar
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('"${expense.title}" berhasil dihapus!'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+
+                  // Kembali ke previous screen
+                  Navigator.pop(context); // Tutup dialog konfirmasi
+                },
+                child: Text('Hapus', style: TextStyle(color: Colors.red)),
               ),
             ],
           ),

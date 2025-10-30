@@ -1,0 +1,313 @@
+import 'package:flutter/material.dart';
+
+import '../models/expense.dart';
+import '../services/expense_manager.dart';
+
+class EditExpenseScreen extends StatefulWidget {
+  final Expense expense;
+
+  const EditExpenseScreen({super.key, required this.expense});
+
+  @override
+  _EditExpenseScreenState createState() => _EditExpenseScreenState();
+}
+
+class _EditExpenseScreenState extends State<EditExpenseScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Controller untuk form fields
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+
+  String _selectedCategory = 'Makanan';
+  DateTime _selectedDate = DateTime.now();
+
+  // List kategori
+  final List<String> _categories = [
+    'Makanan',
+    'Transportasi',
+    'Utilitas',
+    'Hiburan',
+    'Pendidikan',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Isi form dengan data expense yang akan diedit
+    _titleController.text = widget.expense.title;
+    _amountController.text = widget.expense.amount.toStringAsFixed(0);
+    _descriptionController.text = widget.expense.description;
+    _selectedCategory = widget.expense.category;
+    _selectedDate = widget.expense.date;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Edit Pengeluaran'),
+        backgroundColor: Colors.orange,
+        actions: [
+          IconButton(icon: Icon(Icons.save), onPressed: _updateExpense),
+          IconButton(icon: Icon(Icons.delete), onPressed: _deleteExpense),
+        ],
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              // Field Judul
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'Judul Pengeluaran',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.title),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Judul tidak boleh kosong';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 16),
+
+              // Field Jumlah
+              TextFormField(
+                controller: _amountController,
+                decoration: InputDecoration(
+                  labelText: 'Jumlah (Rp)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.attach_money),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Jumlah tidak boleh kosong';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Masukkan angka yang valid';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 16),
+
+              // Dropdown Kategori
+              DropdownButtonFormField<String>(
+                initialValue: _selectedCategory,
+                decoration: InputDecoration(
+                  labelText: 'Kategori',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.category),
+                ),
+                items:
+                    _categories.map((String category) {
+                      return DropdownMenuItem<String>(
+                        value: category,
+                        child: Row(
+                          children: [
+                            Icon(
+                              _getCategoryIcon(category),
+                              color: _getCategoryColor(category),
+                            ),
+                            SizedBox(width: 8),
+                            Text(category),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedCategory = newValue!;
+                  });
+                },
+              ),
+              SizedBox(height: 16),
+
+              // Field Tanggal
+              ListTile(
+                leading: Icon(Icons.calendar_today),
+                title: Text('Tanggal'),
+                subtitle: Text(
+                  '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                ),
+                trailing: Icon(Icons.arrow_drop_down),
+                onTap: _selectDate,
+              ),
+              SizedBox(height: 16),
+
+              // Field Deskripsi
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: 'Deskripsi (Opsional)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.description),
+                ),
+                maxLines: 3,
+              ),
+              SizedBox(height: 24),
+
+              // Tombol Update
+              ElevatedButton(
+                onPressed: _updateExpense,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  minimumSize: Size(double.infinity, 50),
+                ),
+                child: Text(
+                  'Update Pengeluaran',
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
+              ),
+              SizedBox(height: 12),
+
+              // Tombol Delete
+              OutlinedButton(
+                onPressed: _deleteExpense,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: BorderSide(color: Colors.red),
+                  minimumSize: Size(double.infinity, 50),
+                ),
+                child: Text('Hapus Pengeluaran'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Method untuk memilih tanggal
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
+  // Method untuk update pengeluaran
+  void _updateExpense() {
+    if (_formKey.currentState!.validate()) {
+      // Buat expense yang diupdate
+      Expense updatedExpense = Expense(
+        id: widget.expense.id, // ID tetap sama
+        title: _titleController.text,
+        amount: double.parse(_amountController.text),
+        category: _selectedCategory,
+        date: _selectedDate,
+        description: _descriptionController.text,
+      );
+
+      // Update di ExpenseManager
+      ExpenseManager.updateExpense(widget.expense.id, updatedExpense);
+
+      // Tampilkan snackbar sukses
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pengeluaran berhasil diupdate!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Kembali ke previous screen
+      Navigator.pop(context);
+    }
+  }
+
+  // Method untuk hapus pengeluaran
+  void _deleteExpense() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text('Hapus Pengeluaran?'),
+            content: Text(
+              'Apakah Anda yakin ingin menghapus "${widget.expense.title}"? Tindakan ini tidak dapat dibatalkan.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () {
+                  // Hapus dari ExpenseManager
+                  ExpenseManager.removeExpense(widget.expense.id);
+
+                  // Tampilkan snackbar
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Pengeluaran berhasil dihapus!'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+
+                  // Kembali ke previous screen
+                  Navigator.pop(context); // Tutup dialog
+                  Navigator.pop(context); // Kembali ke list
+                },
+                child: Text('Hapus', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // Helper methods untuk kategori
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'makanan':
+        return Colors.orange;
+      case 'transportasi':
+        return Colors.green;
+      case 'utilitas':
+        return Colors.purple;
+      case 'hiburan':
+        return Colors.pink;
+      case 'pendidikan':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'makanan':
+        return Icons.restaurant;
+      case 'transportasi':
+        return Icons.directions_car;
+      case 'utilitas':
+        return Icons.home;
+      case 'hiburan':
+        return Icons.movie;
+      case 'pendidikan':
+        return Icons.school;
+      default:
+        return Icons.attach_money;
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _amountController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+}

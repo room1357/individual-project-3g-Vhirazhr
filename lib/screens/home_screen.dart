@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:pemrograman_mobile/screens/massages_screen.dart';
+import 'package:pemrograman_mobile/screens/category_screen.dart';
 import 'package:pemrograman_mobile/screens/profile_screen.dart';
 import 'package:pemrograman_mobile/screens/settings_screen.dart';
+import 'package:pemrograman_mobile/screens/statistics_screen.dart';
 
 import 'advanced_expense_list_screen.dart';
 import 'expense_list_screen.dart';
@@ -123,15 +124,14 @@ class HomeScreen extends StatelessWidget {
                 mainAxisSpacing: 16,
                 children: [
                   _buildDashboardCard(
-                    'Expenses',
-                    Icons.attach_money,
-                    Colors.green,
+                    'Settings',
+                    Icons.settings,
+                    Colors.purple,
                     () {
-                      // Navigasi ke ExpenseListScreen
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ExpenseListScreen(),
+                          builder: (context) => const SettingsScreen(),
                         ),
                       );
                     },
@@ -146,40 +146,54 @@ class HomeScreen extends StatelessWidget {
                     );
                   }),
                   _buildDashboardCard(
-                    'Messages',
-                    Icons.message,
+                    'Staistics',
+                    Icons.bar_chart,
                     Colors.orange,
                     () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const MessagesScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildDashboardCard(
-                    'Settings',
-                    Icons.settings,
-                    Colors.purple,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsScreen(),
+                          builder: (context) => const StatisticsScreen(),
                         ),
                       );
                     },
                   ),
                   _buildDashboardCard(
                     'Advanced.EX',
-                    Icons.auto_graph,
+                    Icons.money,
                     const Color.fromARGB(255, 203, 0, 0),
                     () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => AdvancedExpenseListScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDashboardCard(
+                    'Categories',
+                    Icons.category,
+                    const Color.fromARGB(255, 116, 6, 206),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CategoryScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDashboardCard(
+                    'Expenses',
+                    Icons.attach_money,
+                    Colors.green,
+                    () {
+                      // Navigasi ke ExpenseListScreen
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ExpenseListScreen(),
                         ),
                       );
                     },

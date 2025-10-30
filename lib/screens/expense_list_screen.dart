@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/expense.dart';
+import 'add_expense_screen.dart';
 
 class ExpenseListScreen extends StatelessWidget {
   const ExpenseListScreen({super.key});
@@ -169,8 +170,10 @@ class ExpenseListScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Fitur tambah pengeluaran segera hadir!')),
+          // Navigate ke AddExpenseScreen
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AddExpenseScreen()),
           );
         },
         backgroundColor: Colors.blue,

@@ -63,6 +63,14 @@ class ExpenseManager {
       title: 'Ongkos Bus',
       amount: 10000.0,
       category: 'Transportasi',
+      date: DateTime(2025, 1, 10),
+      description: 'Ongkos perjalanan harian ke cafe',
+    ),
+    Expense(
+      id: '8',
+      title: 'Ongkos Bus',
+      amount: 10000.0,
+      category: 'Transportasi',
       date: DateTime(2024, 9, 10),
       description: 'Ongkos perjalanan harian ke kampus',
     ),
@@ -126,5 +134,22 @@ class ExpenseManager {
             .toSet();
 
     return total / uniqueDays.length;
+  }
+
+  static void addExpense(Expense newExpense) {
+    expenses.add(newExpense);
+  }
+
+  // update expense
+  static void updateExpense(String id, Expense updatedExpense) {
+    int index = expenses.indexWhere((expense) => expense.id == id);
+    if (index != -1) {
+      expenses[index] = updatedExpense;
+    }
+  }
+
+  // menghapus expense
+  static void removeExpense(String id) {
+    expenses.removeWhere((expense) => expense.id == id);
   }
 }
