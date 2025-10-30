@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../models/category.dart';
 import '../models/expense.dart';
+import '../services/category_manager.dart';
 import '../services/expense_manager.dart';
 
 class AddExpenseScreen extends StatefulWidget {
@@ -18,17 +20,25 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  String _selectedCategory = 'Makanan';
+  String _selectedCategory = 'Makanan'; // Default
   DateTime _selectedDate = DateTime.now();
 
-  // List kategori
-  final List<String> _categories = [
-    'Makanan',
-    'Transportasi',
-    'Utilitas',
-    'Hiburan',
-    'Pendidikan',
-  ];
+  // List kategori - AMBIL DARI CATEGORY MANAGER
+  List<String> get _categories {
+    if (CategoryManager.categories.isEmpty) {
+      return ['Makanan']; // Fallback jika tidak ada kategori
+    }
+    return CategoryManager.categories.map((cat) => cat.name).toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Set default category ke kategori pertama yang ada
+    if (CategoryManager.categories.isNotEmpty) {
+      _selectedCategory = CategoryManager.categories.first.name;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,9 +92,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
               SizedBox(height: 16),
 
-              // Dropdown Kategori
+              // Dropdown Kategori - UPDATE INI
               DropdownButtonFormField<String>(
-                initialValue: _selectedCategory,
+                value: _selectedCategory,
                 decoration: InputDecoration(
                   labelText: 'Kategori',
                   border: OutlineInputBorder(),
@@ -92,14 +102,24 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 ),
                 items:
                     _categories.map((String category) {
+                      // Cari category object untuk dapat color dan icon
+                      final categoryObj = CategoryManager.categories.firstWhere(
+                        (cat) => cat.name == category,
+                        orElse:
+                            () => Category(
+                              id: '',
+                              name: category,
+                              color: Colors.grey,
+                              icon: Icons.attach_money,
+                              createdAt: DateTime.now(),
+                            ),
+                      );
+
                       return DropdownMenuItem<String>(
                         value: category,
                         child: Row(
                           children: [
-                            Icon(
-                              _getCategoryIcon(category),
-                              color: _getCategoryColor(category),
-                            ),
+                            Icon(categoryObj.icon, color: categoryObj.color),
                             SizedBox(width: 8),
                             Text(category),
                           ],

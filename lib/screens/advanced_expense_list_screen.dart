@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/expense.dart';
+import '../services/category_manager.dart';
 import '../services/expense_manager.dart';
-import 'add_expense_screen.dart'; // IMPORT INI
+import 'add_expense_screen.dart';
 import 'edit_expense_screen.dart';
 
 class AdvancedExpenseListScreen extends StatefulWidget {
@@ -59,11 +60,9 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
               children:
                   [
                         'Semua',
-                        'Makanan',
-                        'Transportasi',
-                        'Utilitas',
-                        'Hiburan',
-                        'Pendidikan',
+                        ...CategoryManager.categories.map(
+                          (cat) => cat.name,
+                        ), // ← AMBIL DARI CATEGORY MANAGER
                       ]
                       .map(
                         (category) => Padding(
