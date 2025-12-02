@@ -9,17 +9,25 @@ class AddEditCategoryScreen extends StatefulWidget {
   const AddEditCategoryScreen({this.category, super.key});
 
   @override
-  _AddEditCategoryScreenState createState() => _AddEditCategoryScreenState();
+  State<AddEditCategoryScreen> createState() => _AddEditCategoryScreenState();
 }
 
 class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
+  // ===== COLOR THEME (SAMA HOME) =====
+  static const Color pinkBg = Color(0xFFF8D7DA);
+  static const Color pinkSoft = Color(0xFFF3B8C2);
+  static const Color roseDark = Color(0xFFD87A87);
+  static const Color maroon = Color(0xFF451A2B);
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color darkText = Color(0xFF2D1B2E);
+  static const Color patternBg = Color(0xFFFEF7F8);
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
 
-  Color _selectedColor = Colors.blue;
-  IconData _selectedIcon = Icons.category;
+  Color _selectedColor = roseDark;
+  IconData _selectedIcon = Icons.category_rounded;
 
-  // List warna dan icon yang available
   final List<Color> _availableColors = [
     Colors.red,
     Colors.pink,
@@ -84,182 +92,224 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.category != null;
+
     return Scaffold(
+      backgroundColor: pinkBg,
       appBar: AppBar(
         title: Text(
-          widget.category != null ? 'Edit Category' : 'Add New Category',
-          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+          isEdit ? 'Edit Category' : 'Add Category',
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            fontSize: 20,
+          ),
         ),
-        backgroundColor: Color(0xFF6C63FF),
+        backgroundColor: maroon,
+        foregroundColor: white,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        centerTitle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+        ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.save, size: 24),
-            onPressed: _saveCategory,
-            tooltip: 'Save Category',
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              tooltip: "Save",
+              icon: const Icon(Icons.save_rounded, size: 22),
+              onPressed: _saveCategory,
+            ),
           ),
         ],
       ),
-      body: Container(
-        color: Colors.grey[50],
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              // ← TAMBAHKAN INI
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Card untuk Form Input
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          // Field Nama Kategori
-                          TextFormField(
-                            controller: _nameController,
-                            decoration: InputDecoration(
-                              labelText: 'Category Name',
-                              labelStyle: TextStyle(
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.grey[300]!,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.grey[300]!,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Color(0xFF6C63FF),
-                                ),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              prefixIcon: Icon(
-                                Icons.category_rounded,
-                                color: Colors.grey[600],
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Category name is required';
-                              }
-                              if (widget.category == null &&
-                                  CategoryManager.isCategoryNameExists(value)) {
-                                return 'Category name already exists';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 32),
 
-                          // Pilih Warna
-                          _buildSectionHeader('Choose Color'),
-                          SizedBox(height: 16),
-                          _buildColorGrid(),
-                          SizedBox(height: 32),
-
-                          // Pilih Icon
-                          _buildSectionHeader('Choose Icon'),
-                          SizedBox(height: 16),
-                          _buildIconGrid(),
-                        ],
-                      ),
-                    ),
+      // ✅ BODY TANPA PATTERN / STACK
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ===== FORM CARD =====
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: maroon.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
-                  SizedBox(height: 24),
-
-                  // Preview Card
-                  _buildSectionHeader('Preview'),
-                  SizedBox(height: 12),
-                  _buildPreviewCard(),
-                  SizedBox(height: 24),
-
-                  // Tombol Simpan
-                  _buildSaveButton(),
                 ],
               ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionTitle("Category Name"),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        hintText: "e.g. Food, Transport...",
+                        hintStyle: TextStyle(
+                          fontFamily: 'Poppins',
+                          color: darkText.withOpacity(0.4),
+                        ),
+                        filled: true,
+                        fillColor: patternBg,
+                        prefixIcon: Icon(
+                          Icons.category_rounded,
+                          color: maroon.withOpacity(0.6),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: roseDark.withOpacity(0.8),
+                            width: 1.3,
+                          ),
+                        ),
+                      ),
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: darkText,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Category name is required';
+                        }
+                        if (widget.category == null &&
+                            CategoryManager.isCategoryNameExists(value)) {
+                          return 'Category name already exists';
+                        }
+                        return null;
+                      },
+                      onChanged: (_) => setState(() {}),
+                    ),
+
+                    const SizedBox(height: 22),
+
+                    _sectionTitle("Choose Color"),
+                    const SizedBox(height: 10),
+                    Text(
+                      "Tap one to select",
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 12,
+                        color: darkText.withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildColorGrid(),
+
+                    const SizedBox(height: 22),
+
+                    _sectionTitle("Choose Icon"),
+                    const SizedBox(height: 10),
+                    Text(
+                      "Pick an icon for your category",
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 12,
+                        color: darkText.withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildIconGrid(),
+                  ],
+                ),
+              ),
             ),
-          ),
+
+            const SizedBox(height: 18),
+
+            _sectionTitle("Preview"),
+            const SizedBox(height: 10),
+            _buildPreviewCard(),
+
+            const SizedBox(height: 18),
+
+            _buildSaveButton(isEdit),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _sectionTitle(String title) {
     return Text(
       title,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        color: Colors.grey[800],
+      style: const TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+        color: darkText,
+        letterSpacing: 0.2,
       ),
     );
   }
 
+  // ===== COLOR GRID =====
   Widget _buildColorGrid() {
     return GridView.builder(
       shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 6, // ← KURANGI DARI 8 MENJADI 6
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 6,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),
       itemCount: _availableColors.length,
       itemBuilder: (context, index) {
         final color = _availableColors[index];
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedColor = color;
-            });
-          },
-          child: Container(
-            width: 40, // ← TAMBAHKAN FIXED WIDTH
-            height: 40, // ← TAMBAHKAN FIXED HEIGHT
+        final selected = _selectedColor == color;
+
+        return InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => setState(() => _selectedColor = color),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              border:
-                  _selectedColor == color
-                      ? Border.all(color: Colors.white, width: 3)
-                      : null,
+              border: Border.all(
+                color: selected ? white : white.withOpacity(0.7),
+                width: selected ? 3 : 1.2,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
+                  color: color.withOpacity(selected ? 0.5 : 0.25),
+                  blurRadius: selected ? 10 : 6,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
             child:
-                _selectedColor == color
-                    ? Icon(Icons.check, color: Colors.white, size: 16)
+                selected
+                    ? const Center(
+                      child: Icon(Icons.check, color: white, size: 16),
+                    )
                     : null,
           ),
         );
@@ -267,41 +317,46 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
     );
   }
 
+  // ===== ICON GRID =====
   Widget _buildIconGrid() {
     return GridView.builder(
       shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 5, // ← KURANGI DARI 6 MENJADI 5
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 5,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),
       itemCount: _availableIcons.length,
       itemBuilder: (context, index) {
         final icon = _availableIcons[index];
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedIcon = icon;
-            });
-          },
-          child: Container(
-            width: 40, // ← TAMBAHKAN FIXED WIDTH
-            height: 40, // ← TAMBAHKAN FIXED HEIGHT
+        final selected = _selectedIcon == icon;
+
+        return InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => setState(() => _selectedIcon = icon),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
             decoration: BoxDecoration(
-              color:
-                  _selectedIcon == icon
-                      ? _selectedColor.withOpacity(0.15)
-                      : Colors.grey[100],
+              color: selected ? _selectedColor.withOpacity(0.18) : patternBg,
               shape: BoxShape.circle,
-              border:
-                  _selectedIcon == icon
-                      ? Border.all(color: _selectedColor, width: 2)
-                      : Border.all(color: Colors.grey[300]!),
+              border: Border.all(
+                color: selected ? _selectedColor : Colors.grey.shade300,
+                width: selected ? 2.2 : 1,
+              ),
+              boxShadow: [
+                if (selected)
+                  BoxShadow(
+                    color: _selectedColor.withOpacity(0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+              ],
             ),
             child: Icon(
               icon,
-              color: _selectedIcon == icon ? _selectedColor : Colors.grey[600],
+              color: selected ? _selectedColor : darkText.withOpacity(0.6),
               size: 20,
             ),
           ),
@@ -310,95 +365,122 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
     );
   }
 
+  // ===== PREVIEW CARD =====
   Widget _buildPreviewCard() {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [_selectedColor.withOpacity(0.8), _selectedColor],
+    final previewName =
+        _nameController.text.isEmpty ? "Category Name" : _nameController.text;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_selectedColor.withOpacity(0.85), _selectedColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: _selectedColor.withOpacity(0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(_selectedIcon, color: Colors.white, size: 24),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 52,
+            width: 52,
+            decoration: BoxDecoration(
+              color: white.withOpacity(0.2),
+              shape: BoxShape.circle,
+              border: Border.all(color: white.withOpacity(0.35), width: 2),
             ),
-            SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Preview',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
+            child: Icon(_selectedIcon, color: white, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Preview",
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    color: white.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    _nameController.text.isEmpty
-                        ? 'Category Name'
-                        : _nameController.text,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  previewName,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 18,
+                    color: white,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
-              ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSaveButton() {
+  // ===== SAVE BUTTON =====
+  Widget _buildSaveButton(bool isEdit) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: _saveCategory,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF6C63FF),
-          foregroundColor: Colors.white,
-          elevation: 3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      height: 58,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [roseDark, maroon],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          padding: EdgeInsets.symmetric(vertical: 16),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.save_rounded, size: 20),
-            SizedBox(width: 8),
-            Text(
-              widget.category != null ? 'UPDATE CATEGORY' : 'SAVE CATEGORY',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: maroon.withOpacity(0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
+        ),
+        child: ElevatedButton(
+          onPressed: _saveCategory,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.save_rounded, color: white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                isEdit ? "UPDATE CATEGORY" : "SAVE CATEGORY",
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: white,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -428,7 +510,10 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
             widget.category != null
                 ? 'Category updated successfully!'
                 : 'Category added successfully!',
-            style: TextStyle(fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+            ),
           ),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,

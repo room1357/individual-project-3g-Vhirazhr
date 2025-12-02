@@ -9,24 +9,33 @@ class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
 
   @override
-  _AddExpenseScreenState createState() => _AddExpenseScreenState();
+  State<AddExpenseScreen> createState() => _AddExpenseScreenState();
 }
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  // ===== THEME SAMA HOME =====
+  static const Color pinkBg = Color(0xFFF8D7DA);
+  static const Color pinkSoft = Color(0xFFF3B8C2);
+  static const Color roseDark = Color(0xFFD87A87);
+  static const Color maroon = Color(0xFF451A2B);
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color darkText = Color(0xFF2D1B2E);
+  static const Color patternBg = Color(0xFFFEF7F8); // soft bg, bukan pattern
 
   // Controller untuk form fields
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  String _selectedCategory = 'Makanan'; // Default
+  String _selectedCategory = 'Makanan';
   DateTime _selectedDate = DateTime.now();
 
-  // List kategori - AMBIL DARI CATEGORY MANAGER
+  // List kategori dari manager
   List<String> get _categories {
     if (CategoryManager.categories.isEmpty) {
-      return ['Makanan']; // Fallback jika tidak ada kategori
+      return ['Makanan'];
     }
     return CategoryManager.categories.map((cat) => cat.name).toList();
   }
@@ -34,7 +43,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   @override
   void initState() {
     super.initState();
-    // Set default category ke kategori pertama yang ada
     if (CategoryManager.categories.isNotEmpty) {
       _selectedCategory = CategoryManager.categories.first.name;
     }
@@ -42,67 +50,99 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dateText =
+        '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}';
+
     return Scaffold(
+      backgroundColor: pinkBg,
+      extendBody: true,
       appBar: AppBar(
-        title: Text('Tambah Pengeluaran Baru'),
-        backgroundColor: Colors.blue,
-        actions: [IconButton(icon: Icon(Icons.save), onPressed: _saveExpense)],
+        title: const Text(
+          'Add Expense',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: maroon,
+        foregroundColor: white,
+        elevation: 0,
+        centerTitle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              tooltip: "Save",
+              icon: const Icon(Icons.save_rounded, size: 22),
+              onPressed: _saveExpense,
+            ),
+          ),
+        ],
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16),
+
+      // ✅ BODY TANPA PATTERN
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              // Field Judul
+              _sectionTitle("Judul Pengeluaran"),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: 'Judul Pengeluaran',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.title),
+                decoration: _inputDecoration(
+                  hint: "Contoh: Makan siang",
+                  icon: Icons.title_rounded,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Judul tidak boleh kosong';
-                  }
-                  return null;
-                },
+                style: _inputTextStyle(),
+                validator:
+                    (v) =>
+                        (v == null || v.isEmpty)
+                            ? "Judul tidak boleh kosong"
+                            : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // Field Jumlah
+              _sectionTitle("Jumlah (Rp)"),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _amountController,
-                decoration: InputDecoration(
-                  labelText: 'Jumlah (Rp)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.attach_money),
-                ),
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Jumlah tidak boleh kosong';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return 'Masukkan angka yang valid';
-                  }
+                decoration: _inputDecoration(
+                  hint: "Contoh: 25000",
+                  icon: Icons.attach_money_rounded,
+                ),
+                style: _inputTextStyle(),
+                validator: (v) {
+                  if (v == null || v.isEmpty)
+                    return "Jumlah tidak boleh kosong";
+                  if (double.tryParse(v) == null) return "Masukkan angka valid";
                   return null;
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // Dropdown Kategori - UPDATE INI
+              _sectionTitle("Kategori"),
+              const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
-                decoration: InputDecoration(
-                  labelText: 'Kategori',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.category),
+                decoration: _inputDecoration(
+                  hint: "Pilih kategori",
+                  icon: Icons.category_rounded,
                 ),
                 items:
-                    _categories.map((String category) {
-                      // Cari category object untuk dapat color dan icon
+                    _categories.map((category) {
                       final categoryObj = CategoryManager.categories.firstWhere(
                         (cat) => cat.name == category,
                         orElse:
@@ -120,54 +160,121 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         child: Row(
                           children: [
                             Icon(categoryObj.icon, color: categoryObj.color),
-                            SizedBox(width: 8),
-                            Text(category),
+                            const SizedBox(width: 8),
+                            Text(
+                              category,
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       );
                     }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedCategory = newValue!;
-                  });
+                onChanged: (v) {
+                  if (v == null) return;
+                  setState(() => _selectedCategory = v);
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // Field Tanggal
-              ListTile(
-                leading: Icon(Icons.calendar_today),
-                title: Text('Tanggal'),
-                subtitle: Text(
-                  '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                ),
-                trailing: Icon(Icons.arrow_drop_down),
+              _sectionTitle("Tanggal"),
+              const SizedBox(height: 8),
+              InkWell(
+                borderRadius: BorderRadius.circular(14),
                 onTap: _selectDate,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: patternBg,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: maroon.withOpacity(0.12)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        color: maroon.withOpacity(0.7),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          dateText,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w600,
+                            color: darkText,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: maroon.withOpacity(0.6),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // Field Deskripsi
+              _sectionTitle("Deskripsi (Opsional)"),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: 'Deskripsi (Opsional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.description),
-                ),
                 maxLines: 3,
-              ),
-              SizedBox(height: 24),
-
-              // Tombol Simpan
-              ElevatedButton(
-                onPressed: _saveExpense,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  minimumSize: Size(double.infinity, 50),
+                decoration: _inputDecoration(
+                  hint: "Tambahkan catatan",
+                  icon: Icons.description_rounded,
                 ),
-                child: Text(
-                  'Simpan Pengeluaran',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
+                style: _inputTextStyle(),
+              ),
+              const SizedBox(height: 22),
+
+              // BUTTON SAVE
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [roseDark, maroon],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: maroon.withOpacity(0.35),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _saveExpense,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: const Text(
+                      'SIMPAN PENGELUARAN',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: white,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -177,26 +284,89 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     );
   }
 
-  // Method untuk memilih tanggal
+  // ================== UI HELPERS ==================
+
+  Widget _sectionTitle(String title) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: darkText,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+
+  TextStyle _inputTextStyle() {
+    return const TextStyle(
+      fontFamily: 'Poppins',
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: darkText,
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+        fontFamily: 'Poppins',
+        color: darkText.withOpacity(0.45),
+        fontSize: 13,
+      ),
+      filled: true,
+      fillColor: patternBg,
+      prefixIcon: Icon(icon, color: maroon.withOpacity(0.65), size: 20),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: roseDark.withOpacity(0.9), width: 1.4),
+      ),
+    );
+  }
+
+  // ================== LOGIC ==================
+
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: maroon,
+              onPrimary: white,
+              onSurface: darkText,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
+
     if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
+      setState(() => _selectedDate = picked);
     }
   }
 
-  // Method untuk menyimpan pengeluaran
   void _saveExpense() {
     if (_formKey.currentState!.validate()) {
-      // Buat expense baru
-      Expense newExpense = Expense(
+      final newExpense = Expense(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: _titleController.text,
         amount: double.parse(_amountController.text),
@@ -205,54 +375,26 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         description: _descriptionController.text,
       );
 
-      // Tambahkan ke ExpenseManager
       ExpenseManager.addExpense(newExpense);
 
-      // Tampilkan snackbar sukses
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Pengeluaran berhasil ditambahkan!'),
+          content: const Text(
+            'Pengeluaran berhasil ditambahkan!',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
 
-      // Kembali ke previous screen
       Navigator.pop(context);
-    }
-  }
-
-  // Helper methods untuk kategori
-  Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'makanan':
-        return Colors.orange;
-      case 'transportasi':
-        return Colors.green;
-      case 'utilitas':
-        return Colors.purple;
-      case 'hiburan':
-        return Colors.pink;
-      case 'pendidikan':
-        return Colors.blue;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'makanan':
-        return Icons.restaurant;
-      case 'transportasi':
-        return Icons.directions_car;
-      case 'utilitas':
-        return Icons.home;
-      case 'hiburan':
-        return Icons.movie;
-      case 'pendidikan':
-        return Icons.school;
-      default:
-        return Icons.attach_money;
     }
   }
 
