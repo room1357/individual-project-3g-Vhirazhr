@@ -523,7 +523,7 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
         ),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     }
   }
 

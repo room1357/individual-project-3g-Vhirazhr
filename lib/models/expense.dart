@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 class Expense {
   final String id;
   final String title;
@@ -15,11 +17,24 @@ class Expense {
     required this.description,
   });
 
-  // Getter untuk format tampilan mata uang
-  String get formattedAmount => 'Rp ${amount.toStringAsFixed(0)}';
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'title': title,
+    'amount': amount,
+    'category': category,
+    'date': date.toIso8601String(),
+    'description': description,
+  };
 
-  // Getter untuk format tampilan tanggal
-  String get formattedDate {
-    return '${date.day}/${date.month}/${date.year}';
-  }
+  factory Expense.fromMap(Map<String, dynamic> map) => Expense(
+    id: map['id'],
+    title: map['title'],
+    amount: (map['amount'] as num).toDouble(),
+    category: map['category'],
+    date: DateTime.parse(map['date']),
+    description: map['description'] ?? '',
+  );
+
+  String get formattedAmount => "Rp ${amount.toStringAsFixed(0)}";
+  String get formattedDate => DateFormat("dd/MM/yyyy").format(date);
 }

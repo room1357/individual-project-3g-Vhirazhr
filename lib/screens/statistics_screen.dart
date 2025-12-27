@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../models/expense.dart';
+import '../services/category_manager.dart';
 import '../services/expense_manager.dart';
 
 class StatisticsScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   static const Color white = Color(0xFFFFFFFF);
   static const Color darkText = Color(0xFF2D1B2E);
   static const Color softSurface = Color(0xFFFEF7F8);
+
   static const Color blueAccent = Color(0xFF4A6FA5);
   static const Color greenAccent = Color(0xFF5CB85C);
   static const Color yellowAccent = Color(0xFFFFD166);
@@ -39,7 +41,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     'Semua Waktu',
   ];
 
-  final List<String> _chartTypes = ['Diagram Pie', 'Diagram Batang'];
+  final List<String> _chartTypes = ['Pie', 'Batang'];
 
   @override
   void initState() {
@@ -109,11 +111,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         break;
 
       case 'Semua Waktu':
-        // biarin dulu, nanti difilter dengan tahun di bawah
         break;
     }
 
-    // ✅ kalau pilih Semua Waktu => filter berdasarkan tahun dropdown
     if (_selectedTimeFilter == 'Semua Waktu') {
       filtered =
           filtered
@@ -132,6 +132,45 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final sorted =
         totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     return Map.fromEntries(sorted);
+  }
+
+  // ===== PERIODE LABEL =====
+  String _getPeriodLabel() {
+    final now = DateTime.now();
+
+    String fmt(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/'
+        '${d.month.toString().padLeft(2, '0')}/'
+        '${d.year}';
+
+    switch (_selectedTimeFilter) {
+      case 'Hari Ini':
+        return fmt(now);
+
+      case 'Minggu Ini':
+        final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+        final startDate = DateTime(
+          startOfWeek.year,
+          startOfWeek.month,
+          startOfWeek.day,
+        );
+        final endDate = DateTime(now.year, now.month, now.day);
+        return '${fmt(startDate)} - ${fmt(endDate)}';
+
+      case 'Bulan Ini':
+        final startDate = DateTime(now.year, now.month, 1);
+        final endDate = DateTime(now.year, now.month + 1, 0);
+        return '${fmt(startDate)} - ${fmt(endDate)}';
+
+      case 'Tahun Ini':
+        return 'Tahun ${now.year}';
+
+      case 'Semua Waktu':
+        return 'Tahun $_selectedYear';
+
+      default:
+        return '';
+    }
   }
 
   @override
@@ -157,7 +196,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     Map<String, double> categoryTotals,
   ) {
     return SafeArea(
-      top: false,
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
@@ -169,116 +207,262 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: Text(
-                "Statistik Keuangan",
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: maroon,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Analisis pengeluaran Anda",
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                color: darkText.withOpacity(0.7),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-            _buildDashboardCards(
+            _buildHeader(totalAmount, filteredExpenses.length),
+            const SizedBox(height: 14),
+            _buildTimeFilterPills(),
+            if (_selectedTimeFilter == 'Semua Waktu') ...[
+              const SizedBox(height: 10),
+              _buildYearFilter(),
+            ],
+            const SizedBox(height: 16),
+            _buildChartSection(categoryTotals, totalAmount),
+            const SizedBox(height: 14),
+            _buildDashboardGrid(
               totalAmount,
               filteredExpenses.length,
               averageAmount,
+              categoryTotals.length,
             ),
 
-            const SizedBox(height: 20),
-
-            // ✅ FILTER WAKTU (udah wrap, semua chip keliatan)
-            _buildTimeFilterCard(),
-
-            // ✅ FILTER TAHUN muncul saat Semua Waktu dipilih
-            if (_selectedTimeFilter == 'Semua Waktu') ...[
-              const SizedBox(height: 12),
-              _buildYearFilter(),
-            ],
-
-            const SizedBox(height: 20),
-            _buildChartSection(categoryTotals, totalAmount),
-
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             _buildCategoryList(categoryTotals, totalAmount),
 
             if (filteredExpenses.isNotEmpty) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               _buildLargeExpenses(filteredExpenses),
             ],
-
-            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  // ===================== UI COMPONENTS =====================
+  // ===================== HEADER =====================
+  Widget _buildHeader(double totalAmount, int count) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [maroon, roseDark.withOpacity(0.9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: maroon.withOpacity(0.35),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.insights_rounded, color: white, size: 28),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Statistik Keuangan",
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 18.5,
+                    fontWeight: FontWeight.w800,
+                    color: white,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  "Analisis pengeluaran kamu",
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12.5,
+                    color: white.withOpacity(0.9),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _chipInfo(
+                      icon: Icons.event_rounded,
+                      text: _getPeriodLabel(),
+                    ),
+                    const SizedBox(width: 6),
+                    _chipInfo(
+                      icon: Icons.receipt_long_rounded,
+                      text: "$count transaksi",
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildDashboardCards(double total, int count, double average) {
-    return Row(
+  Widget _chipInfo({required IconData icon, required String text}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: white.withOpacity(0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: white, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===================== DASHBOARD (KECIL) =====================
+  Widget _buildDashboardGrid(
+    double total,
+    int count,
+    double average,
+    int categoryCount,
+  ) {
+    return GridView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 2.6, // lebih kecil/pendek
+      ),
       children: [
-        Expanded(
-          child: _buildDashboardCard(
-            "Total Pengeluaran",
-            "Rp ${total.toStringAsFixed(0)}",
-            Icons.account_balance_wallet_rounded,
-            maroon,
-          ),
+        _dashCard(
+          title: "Total",
+          value: "Rp ${total.toStringAsFixed(0)}",
+          icon: Icons.account_balance_wallet_rounded,
+          color: maroon,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildDashboardCard(
-            "Rata-rata",
-            "Rp ${average.toStringAsFixed(0)}",
-            Icons.trending_up_rounded,
-            roseDark,
-          ),
+        _dashCard(
+          title: "Rata-rata",
+          value: "Rp ${average.toStringAsFixed(0)}",
+          icon: Icons.trending_up_rounded,
+          color: roseDark,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildDashboardCard(
-            "Transaksi",
-            "$count item",
-            Icons.receipt_long_rounded,
-            blueAccent,
-          ),
+        _dashCard(
+          title: "Transaksi",
+          value: "$count item",
+          icon: Icons.receipt_long_rounded,
+          color: blueAccent,
+        ),
+        _dashCard(
+          title: "Kategori",
+          value: "$categoryCount jenis",
+          icon: Icons.category_rounded,
+          color: purpleAccent,
         ),
       ],
     );
   }
 
-  Widget _buildDashboardCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _dashCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.10),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: maroon.withOpacity(0.04)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 36,
+            width: 36,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 19),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: "Poppins",
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: "Poppins",
+                    fontSize: 10.5,
+                    color: darkText.withOpacity(0.7),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===================== FILTER WAKTU (HORIZONTAL) =====================
+  Widget _buildTimeFilterPills() {
+    return Container(
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.15),
-            blurRadius: 12,
+            color: maroon.withOpacity(0.06),
+            blurRadius: 14,
             offset: const Offset(0, 6),
           ),
         ],
@@ -286,106 +470,51 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const Row(
             children: [
-              Container(
-                height: 40,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              Icon(
-                Icons.more_vert_rounded,
-                color: darkText.withOpacity(0.3),
-                size: 20,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: "Poppins",
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: "Poppins",
-              fontSize: 12,
-              color: darkText.withOpacity(0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ✅ FIX UTAMA: pakai Wrap biar chip terakhir "Semua Waktu" gak ketutup
-  Widget _buildTimeFilterCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: maroon.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
+              Icon(Icons.tune_rounded, color: maroon, size: 18),
+              SizedBox(width: 6),
+              Text(
                 "Periode Analisis",
                 style: TextStyle(
                   fontFamily: 'Poppins',
-                  fontSize: 15,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                   color: maroon,
                 ),
               ),
-              Icon(
-                Icons.calendar_month_rounded,
-                color: maroon.withOpacity(0.7),
-                size: 20,
-              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children:
-                _timeFilters.map((filter) {
+          SizedBox(
+            height: 40,
+            child: ScrollConfiguration(
+              behavior: const _NoGlowScrollBehavior(),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.only(
+                  right: 8,
+                ), // biar ujung nggak ketutup
+                itemCount: _timeFilters.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final filter = _timeFilters[i];
                   final selected = _selectedTimeFilter == filter;
 
                   return GestureDetector(
                     onTap: () => setState(() => _selectedTimeFilter = filter),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
+                      duration: const Duration(milliseconds: 220),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 10,
+                        horizontal: 16,
+                        vertical: 9,
                       ),
                       decoration: BoxDecoration(
                         gradient:
                             selected
-                                ? LinearGradient(
+                                ? const LinearGradient(
                                   colors: [maroon, roseDark],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -397,53 +526,45 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           color:
                               selected
                                   ? Colors.transparent
-                                  : maroon.withOpacity(0.1),
+                                  : maroon.withOpacity(0.12),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (selected)
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              color: white,
-                              size: 14,
-                            ),
-                          if (selected) const SizedBox(width: 6),
-                          Text(
-                            filter,
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 13,
-                              fontWeight:
-                                  selected ? FontWeight.w700 : FontWeight.w500,
-                              color: selected ? white : darkText,
-                            ),
+                      child: Center(
+                        child: Text(
+                          filter,
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12.5,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w600,
+                            color: selected ? white : darkText,
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   );
-                }).toList(),
+                },
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ✅ Year dropdown beneran dibuat & dipakai
+  // ===================== YEAR FILTER =====================
   Widget _buildYearFilter() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: maroon.withOpacity(0.10)),
         boxShadow: [
           BoxShadow(
             color: maroon.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -477,67 +598,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  // ===================== CHART SECTION =====================
   Widget _buildChartSection(
     Map<String, double> categoryTotals,
     double totalAmount,
   ) {
-    if (categoryTotals.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: maroon.withOpacity(0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Distribusi Kategori",
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: maroon,
-                  ),
-                ),
-                Icon(
-                  Icons.pie_chart_rounded,
-                  color: maroon.withOpacity(0.7),
-                  size: 22,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(
-              "Belum ada data kategori",
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                color: darkText.withOpacity(0.6),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: maroon.withOpacity(0.08),
+            color: maroon.withOpacity(0.06),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -546,70 +619,54 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Distribusi Kategori",
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: maroon,
+              const Icon(Icons.pie_chart_rounded, color: maroon, size: 18),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  "Distribusi Kategori",
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w700,
+                    color: maroon,
+                  ),
                 ),
               ),
-              Row(
-                children: [
-                  ..._chartTypes.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final type = entry.value;
-                    final selected = _selectedChartType == index;
-
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedChartType = index),
-                      child: Container(
-                        margin: const EdgeInsets.only(left: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected ? maroon.withOpacity(0.1) : null,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: selected ? maroon : maroon.withOpacity(0.1),
-                          ),
-                        ),
-                        child: Text(
-                          type,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color:
-                                selected ? maroon : darkText.withOpacity(0.6),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ],
-              ),
+              _chartTab(0),
+              const SizedBox(width: 6),
+              _chartTab(1),
             ],
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 220,
-            child:
-                _selectedChartType == 0
-                    ? _buildPieChart(categoryTotals, totalAmount)
-                    : _buildBarChart(categoryTotals),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          if (categoryTotals.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                "Belum ada data kategori",
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13,
+                  color: darkText.withOpacity(0.7),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 240,
+              child:
+                  _selectedChartType == 0
+                      ? _buildPieChart(categoryTotals, totalAmount)
+                      : _buildBarChart(categoryTotals),
+            ),
+
+          const SizedBox(height: 6),
           Text(
             "Total: Rp ${totalAmount.toStringAsFixed(0)}",
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Poppins',
-              fontSize: 14,
+              fontSize: 12.8,
               fontWeight: FontWeight.w700,
               color: maroon,
             ),
@@ -619,45 +676,61 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  Widget _chartTab(int index) {
+    final selected = _selectedChartType == index;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedChartType = index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? maroon.withOpacity(0.12) : softSurface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? maroon : maroon.withOpacity(0.10),
+          ),
+        ),
+        child: Text(
+          _chartTypes[index],
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: selected ? maroon : darkText.withOpacity(0.7),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPieChart(
     Map<String, double> categoryTotals,
     double totalAmount,
   ) {
     final categories = categoryTotals.entries.toList();
+
     final List<PieChartSectionData> sections = [];
 
-    final List<Color> colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.red,
-      Colors.pink,
-      Colors.teal,
-      Colors.amber,
-    ];
-
     for (int i = 0; i < categories.length; i++) {
-      final isTouched = i == _touchedIndex;
-      final double fontSize = isTouched ? 16.0 : 14.0;
-      final double radius = isTouched ? 80.0 : 70.0;
-
       final category = categories[i];
+      final isTouched = i == _touchedIndex;
 
       final double percentage =
           totalAmount > 0 ? (category.value / totalAmount * 100) : 0.0;
 
+      final Color color = _getCategoryColor(category.key);
+
       sections.add(
         PieChartSectionData(
-          color: colors[i % colors.length],
+          color: color,
           value: percentage,
-          title: '${percentage.toStringAsFixed(1)}%',
-          radius: radius,
-          titleStyle: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+          radius: isTouched ? 52 : 46, // 🔥 KECILKAN
+          title: percentage >= 10 ? '${percentage.toStringAsFixed(1)}%' : '',
+          titleStyle: const TextStyle(
             fontFamily: 'Poppins',
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
           ),
         ),
       );
@@ -666,81 +739,97 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return Row(
       children: [
         Expanded(
-          flex: 3,
-          child: PieChart(
-            PieChartData(
-              pieTouchData: PieTouchData(
-                touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                  setState(() {
-                    if (!event.isInterestedForInteractions ||
-                        pieTouchResponse == null ||
-                        pieTouchResponse.touchedSection == null) {
-                      _touchedIndex = -1;
-                      return;
-                    }
-                    _touchedIndex =
-                        pieTouchResponse.touchedSection!.touchedSectionIndex;
-                  });
-                },
-              ),
-              borderData: FlBorderData(show: false),
-              sectionsSpace: 2,
-              centerSpaceRadius: 40,
-              sections: sections,
+          flex: 4,
+          child: AspectRatio(
+            // 🔥 PENTING
+            aspectRatio: 1,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                PieChart(
+                  PieChartData(
+                    pieTouchData: PieTouchData(
+                      touchCallback: (event, response) {
+                        setState(() {
+                          if (!event.isInterestedForInteractions ||
+                              response?.touchedSection == null) {
+                            _touchedIndex = -1;
+                            return;
+                          }
+                          _touchedIndex =
+                              response!.touchedSection!.touchedSectionIndex;
+                        });
+                      },
+                    ),
+                    borderData: FlBorderData(show: false),
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 36, // 🔥 KECILKAN
+                    sections: sections,
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Total",
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: darkText.withOpacity(0.7),
+                      ),
+                    ),
+                    Text(
+                      "Rp ${totalAmount.toStringAsFixed(0)}",
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: maroon,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
-        const SizedBox(width: 16),
-        Expanded(flex: 2, child: _buildChartLegend(categories, colors)),
+        const SizedBox(width: 10),
+        Expanded(flex: 3, child: _buildChartLegend(categories)),
       ],
     );
   }
 
-  Widget _buildChartLegend(
-    List<MapEntry<String, double>> categories,
-    List<Color> colors,
-  ) {
+  Widget _buildChartLegend(List<MapEntry<String, double>> categories) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children:
-          categories.asMap().entries.map((entry) {
-            final index = entry.key;
-            final category = entry.value;
-            final color = colors[index % colors.length];
-
+          categories.map((entry) {
+            final color = _getCategoryColor(entry.key);
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
                   Container(
-                    width: 12,
-                    height: 12,
+                    width: 10,
+                    height: 10,
                     decoration: BoxDecoration(
                       color: color,
                       shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      category.key,
+                      entry.key,
                       style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 11,
-                        color: darkText,
                         fontWeight: FontWeight.w600,
+                        color: darkText,
                       ),
                       overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    "Rp ${category.value.toStringAsFixed(0)}",
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 10,
-                      color: darkText.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -753,103 +842,125 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Widget _buildBarChart(Map<String, double> categoryTotals) {
     final categories = categoryTotals.entries.toList();
     final maxValue = categoryTotals.values.reduce((a, b) => a > b ? a : b);
-    final List<Color> colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.red,
-      Colors.pink,
-      Colors.teal,
-      Colors.amber,
-    ];
 
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: maxValue * 1.2,
-        barTouchData: BarTouchData(enabled: true),
-        titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index < 0 || index >= categories.length) {
-                  return const SizedBox();
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    categories[index].key,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 10,
-                      color: darkText,
-                    ),
-                  ),
-                );
-              },
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: AspectRatio(
+        aspectRatio: 1.2, // 🔥 KUNCI: stabil & tidak kepotong
+        child: BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: maxValue * 1.3,
+            barTouchData: BarTouchData(enabled: true),
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              getDrawingHorizontalLine:
+                  (value) =>
+                      FlLine(color: maroon.withOpacity(0.07), strokeWidth: 1),
             ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Text(
-                    "Rp${value.toInt()}",
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 9,
-                      color: darkText.withOpacity(0.6),
-                    ),
-                  ),
-                );
-              },
+            borderData: FlBorderData(show: false),
+
+            titlesData: FlTitlesData(
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+
+              // 🔥 KIRI (NOMINAL)
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 46, // 🔥 PENTING
+                  interval: maxValue / 4,
+                  getTitlesWidget: (value, meta) {
+                    return Text(
+                      "Rp${value.toInt()}",
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 9,
+                        color: darkText.withOpacity(0.6),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // 🔥 BAWAH (KATEGORI)
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    final index = value.toInt();
+                    if (index < 0 || index >= categories.length) {
+                      return const SizedBox();
+                    }
+
+                    final label = categories[index].key;
+                    final shortLabel =
+                        label.length > 7 ? '${label.substring(0, 7)}…' : label;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        shortLabel,
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                          color: darkText,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
+
+            barGroups:
+                categories.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final category = entry.value;
+
+                  final color = _getCategoryColor(category.key);
+
+                  return BarChartGroupData(
+                    x: index,
+                    barRods: [
+                      BarChartRodData(
+                        toY: category.value,
+                        width: 18,
+                        borderRadius: BorderRadius.circular(6),
+                        color: color, // 🔥 SAMA DENGAN PIE
+                      ),
+                    ],
+                  );
+                }).toList(),
           ),
         ),
-        gridData: FlGridData(show: true),
-        borderData: FlBorderData(show: true),
-        barGroups:
-            categories.asMap().entries.map((entry) {
-              final index = entry.key;
-              final category = entry.value;
-              return BarChartGroupData(
-                x: index,
-                barRods: [
-                  BarChartRodData(
-                    toY: category.value,
-                    color: colors[index % colors.length],
-                    width: 20,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ],
-              );
-            }).toList(),
       ),
     );
   }
 
+  // ===================== CATEGORY LIST =====================
   Widget _buildCategoryList(
     Map<String, double> categoryTotals,
     double totalAmount,
   ) {
-    if (categoryTotals.isEmpty) {
-      return const SizedBox();
-    }
+    if (categoryTotals.isEmpty) return const SizedBox();
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
       decoration: BoxDecoration(
         color: white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: maroon.withOpacity(0.08),
-            blurRadius: 16,
+            color: maroon.withOpacity(0.06),
+            blurRadius: 14,
             offset: const Offset(0, 6),
           ),
         ],
@@ -859,32 +970,39 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.list_alt_rounded, color: maroon, size: 20),
-              SizedBox(width: 8),
+              Icon(Icons.list_alt_rounded, color: maroon, size: 18),
+              SizedBox(width: 6),
               Text(
                 "Detail Kategori",
                 style: TextStyle(
                   fontFamily: 'Poppins',
-                  fontSize: 17,
+                  fontSize: 15.5,
                   fontWeight: FontWeight.w700,
                   color: maroon,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
           ...categoryTotals.entries.map((entry) {
             final percentage =
                 totalAmount > 0 ? (entry.value / totalAmount * 100) : 0.0;
             final color = _getCategoryColor(entry.key);
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: softSurface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: maroon.withOpacity(0.05)),
+              ),
               child: Row(
                 children: [
                   Container(
-                    height: 44,
-                    width: 44,
+                    height: 42,
+                    width: 42,
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
@@ -895,7 +1013,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       size: 20,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -904,72 +1022,66 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           entry.key,
                           style: const TextStyle(
                             fontFamily: 'Poppins',
-                            fontSize: 14,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                             color: darkText,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            minHeight: 6,
+                            value: percentage / 100,
+                            backgroundColor: color.withOpacity(0.12),
+                            valueColor: AlwaysStoppedAnimation(color),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
                         Text(
                           "${percentage.toStringAsFixed(1)}% dari total",
                           style: TextStyle(
                             fontFamily: 'Poppins',
-                            fontSize: 11,
+                            fontSize: 10.5,
                             color: darkText.withOpacity(0.6),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        "Rp ${entry.value.toStringAsFixed(0)}",
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: maroon,
-                        ),
-                      ),
-                      Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        width: 100,
-                        height: 6,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: percentage / 100,
-                            backgroundColor: color.withOpacity(0.1),
-                            valueColor: AlwaysStoppedAnimation(color),
-                          ),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Text(
+                    "Rp ${entry.value.toStringAsFixed(0)}",
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: maroon,
+                    ),
                   ),
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
   }
 
+  // ===================== LARGE EXPENSES =====================
   Widget _buildLargeExpenses(List<Expense> expenses) {
     final sorted = List<Expense>.from(expenses)
       ..sort((a, b) => b.amount.compareTo(a.amount));
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
       decoration: BoxDecoration(
         color: white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: maroon.withOpacity(0.08),
-            blurRadius: 16,
+            color: maroon.withOpacity(0.06),
+            blurRadius: 14,
             offset: const Offset(0, 6),
           ),
         ],
@@ -979,35 +1091,35 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.attach_money_rounded, color: maroon, size: 20),
-              SizedBox(width: 8),
+              Icon(Icons.payments_rounded, color: maroon, size: 18),
+              SizedBox(width: 6),
               Text(
                 "Transaksi Terbesar",
                 style: TextStyle(
                   fontFamily: 'Poppins',
-                  fontSize: 17,
+                  fontSize: 15.5,
                   fontWeight: FontWeight.w700,
                   color: maroon,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           ...sorted.take(5).map((expense) {
             final color = _getCategoryColor(expense.category);
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: softSurface,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: maroon.withOpacity(0.05)),
               ),
               child: Row(
                 children: [
                   Container(
-                    height: 50,
-                    width: 50,
+                    height: 46,
+                    width: 46,
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
@@ -1015,19 +1127,21 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     child: Icon(
                       _getCategoryIcon(expense.category),
                       color: color,
-                      size: 24,
+                      size: 22,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           expense.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontFamily: 'Poppins',
-                            fontSize: 15,
+                            fontSize: 13.8,
                             fontWeight: FontWeight.w700,
                             color: darkText,
                           ),
@@ -1048,18 +1162,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                 expense.category,
                                 style: TextStyle(
                                   fontFamily: 'Poppins',
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
                                   color: color,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Text(
                               expense.formattedDate,
                               style: TextStyle(
                                 fontFamily: 'Poppins',
-                                fontSize: 11,
+                                fontSize: 10.5,
                                 color: darkText.withOpacity(0.6),
                               ),
                             ),
@@ -1068,42 +1182,30 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       ],
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        expense.formattedAmount,
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: maroon,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "Rp ${expense.amount.toStringAsFixed(0)}",
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 11,
-                          color: darkText.withOpacity(0.6),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Text(
+                    "Rp ${expense.amount.toStringAsFixed(0)}",
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 13.8,
+                      fontWeight: FontWeight.w800,
+                      color: maroon,
+                    ),
                   ),
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
   }
 
+  // ===================== EMPTY STATE =====================
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1111,57 +1213,38 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               height: 120,
               width: 120,
               decoration: BoxDecoration(
-                color: pinkSoft.withOpacity(0.3),
+                gradient: LinearGradient(
+                  colors: [
+                    pinkSoft.withOpacity(0.7),
+                    roseDark.withOpacity(0.9),
+                  ],
+                ),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.bar_chart_rounded,
-                size: 60,
-                color: maroon.withOpacity(0.7),
+                size: 58,
+                color: white,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             const Text(
               "Belum ada data statistik",
               style: TextStyle(
                 fontFamily: 'Poppins',
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
                 color: darkText,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
-              "Tambahkan pengeluaran untuk melihat analisis statistik",
+              "Tambahkan pengeluaran untuk melihat analisis statistik.",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Poppins',
-                fontSize: 14,
+                fontSize: 13.5,
                 color: darkText.withOpacity(0.65),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                // Navigate to add expense
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: maroon,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-              child: const Text(
-                "Tambah Pengeluaran",
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  color: white,
-                ),
               ),
             ),
           ],
@@ -1177,49 +1260,34 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   double _calculateAverage(List<Expense> expenses) =>
       expenses.isEmpty ? 0 : _calculateTotal(expenses) / expenses.length;
 
-  Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'makanan':
-        return Colors.orange;
-      case 'transportasi':
-        return Colors.green;
-      case 'utilitas':
-        return Colors.blue;
-      case 'hiburan':
-        return Colors.pink;
-      case 'pendidikan':
-        return Colors.purple;
-      case 'belanja':
-        return Colors.red;
-      case 'kesehatan':
-        return Colors.teal;
-      case 'lainnya':
-        return Colors.grey;
-      default:
-        return Colors.deepPurple;
-    }
+  Color _getCategoryColor(String categoryName) {
+    final cat =
+        CategoryManager.categories
+            .where((c) => c.name == categoryName)
+            .toList();
+
+    return cat.isNotEmpty ? cat.first.color : Colors.grey;
   }
 
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'makanan':
-        return Icons.restaurant;
-      case 'transportasi':
-        return Icons.directions_car;
-      case 'utilitas':
-        return Icons.home;
-      case 'hiburan':
-        return Icons.movie;
-      case 'pendidikan':
-        return Icons.school;
-      case 'belanja':
-        return Icons.shopping_cart;
-      case 'kesehatan':
-        return Icons.medical_services;
-      case 'lainnya':
-        return Icons.more_horiz;
-      default:
-        return Icons.attach_money;
-    }
+  IconData _getCategoryIcon(String categoryName) {
+    final cat =
+        CategoryManager.categories
+            .where((c) => c.name == categoryName)
+            .toList();
+
+    return cat.isNotEmpty ? cat.first.icon : Icons.attach_money;
+  }
+}
+
+class _NoGlowScrollBehavior extends ScrollBehavior {
+  const _NoGlowScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
   }
 }

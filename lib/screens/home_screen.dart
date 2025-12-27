@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:pemrograman_mobile/screens/category_screen.dart';
 import 'package:pemrograman_mobile/screens/profile_screen.dart';
 import 'package:pemrograman_mobile/screens/settings_screen.dart';
 import 'package:pemrograman_mobile/screens/statistics_screen.dart';
 
+import '../services/expense_service.dart';
 import 'add_expense_screen.dart';
 import 'advanced_expense_list_screen.dart';
+import 'category_screen.dart';
 import 'expense_list_screen.dart';
 import 'login_screen.dart';
 import 'massages_screen.dart';
@@ -38,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -47,6 +49,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeInOut,
     );
     _animationController.forward();
+
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    await ExpenseService.load();
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
@@ -68,6 +78,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       default:
         return "Home";
     }
+  }
+
+  // Fungsi untuk menghitung total pengeluaran hari ini
+  double _todayTotal() {
+    final now = DateTime.now();
+    return ExpenseService.expenses
+        .where(
+          (e) =>
+              e.date.year == now.year &&
+              e.date.month == now.month &&
+              e.date.day == now.day,
+        )
+        .fold(0.0, (sum, e) => sum + e.amount);
+  }
+
+  // Fungsi untuk menghitung total pengeluaran bulan ini
+  double _monthTotal() {
+    final now = DateTime.now();
+    return ExpenseService.expenses
+        .where((e) => e.date.year == now.year && e.date.month == now.month)
+        .fold(0.0, (sum, e) => sum + e.amount);
+  }
+
+  // Fungsi untuk format rupiah
+  String _formatRupiah(double value) {
+    return 'Rp ${value.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
   }
 
   // ✅ INI YANG PENTING: body pake switch biar rebuild tiap pindah tab
@@ -343,7 +379,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       MaterialPageRoute(
                         builder: (_) => const AddExpenseScreen(),
                       ),
-                    ).then((_) => setState(() {}));
+                    ).then((result) async {
+                      if (result == true) {
+                        await ExpenseService.load();
+                      }
+                      if (!mounted) return;
+                      setState(() {});
+                    });
                   },
                   child: const Icon(Icons.add_rounded, size: 32, color: white),
                 ),
@@ -388,6 +430,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       opacity: _fadeAnimation,
       child: Column(
         children: [
+          // HEADER - TETAP DI ATAS
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             child: Container(
@@ -471,15 +514,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         width: 1.5,
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _ModernSummaryItem(
                           "This Month",
-                          "Rp 1.250.000",
+                          _formatRupiah(_monthTotal()),
                           Icons.calendar_month_rounded,
                         ),
-                        SizedBox(
+                        const SizedBox(
                           height: 50,
                           child: VerticalDivider(
                             color: white,
@@ -490,7 +533,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                         _ModernSummaryItem(
                           "Today",
-                          "Rp 75.000",
+                          _formatRupiah(_todayTotal()),
                           Icons.today_rounded,
                         ),
                       ],
@@ -503,6 +546,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
           const SizedBox(height: 20),
 
+          // CONTAINER PUTIH - YANG DISCROLL
           Expanded(
             child: Container(
               width: double.infinity,
@@ -515,6 +559,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               child: Column(
                 children: [
+                  // Quick Access Title
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
@@ -532,7 +577,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           "Quick Access",
                           style: TextStyle(
                             fontFamily: 'Poppins',
-                            fontSize: 20,
+                            fontSize: 22, // Sedikit lebih besar
                             fontWeight: FontWeight.w700,
                             color: darkText,
                             letterSpacing: 0.3,
@@ -552,15 +597,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
+                  // Grid Cards dengan scrolling yang tepat
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(30, 0, 30, 30),
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                       child: GridView.count(
+                        physics:
+                            const BouncingScrollPhysics(), // Tambah physics untuk smooth scroll
                         crossAxisCount: 2,
-                        crossAxisSpacing: 17,
-                        mainAxisSpacing: 17,
-                        childAspectRatio: 0.85,
-                        padding: const EdgeInsets.only(bottom: 80),
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.9, // Sedikit lebih tinggi
+                        padding: const EdgeInsets.only(
+                          bottom: 100,
+                        ), // PERBAIKI: Tambah bottom padding
                         children: [
                           _buildModernCard(
                             context,
@@ -677,39 +727,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ],
           ),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18), // Sedikit lebih besar
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 42,
-                width: 42,
+                height: 48, // Sedikit lebih besar
+                width: 48,
                 decoration: BoxDecoration(
                   color: white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: white.withOpacity(0.3), width: 1.5),
                 ),
-                child: Icon(icon, size: 22, color: white),
+                child: Icon(
+                  icon,
+                  size: 24,
+                  color: white,
+                ), // Sedikit lebih besar
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16), // Sedikit lebih besar
               Text(
                 title,
                 style: const TextStyle(
                   fontFamily: 'Poppins',
-                  fontSize: 14,
+                  fontSize: 16, // Sedikit lebih besar
                   fontWeight: FontWeight.w700,
                   color: white,
                   letterSpacing: 0.2,
                   height: 1.2,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 subtitle,
                 style: TextStyle(
                   fontFamily: 'Poppins',
-                  fontSize: 10,
+                  fontSize: 12, // Sedikit lebih besar
                   color: white.withOpacity(0.8),
                   fontWeight: FontWeight.w400,
                 ),

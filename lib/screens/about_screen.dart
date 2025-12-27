@@ -35,7 +35,6 @@ class AboutScreen extends StatelessWidget {
         ),
       ),
 
-      // ✅ BODY TANPA PATTERN / STACK
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),

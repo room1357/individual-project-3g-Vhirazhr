@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/category.dart';
 import '../services/category_manager.dart';
-import 'add_category_screen.dart'; // pastikan file ini memang berisi AddEditCategoryScreen
+import 'add_edit_category_screen.dart';
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -12,7 +12,6 @@ class CategoryScreen extends StatefulWidget {
 }
 
 class _CategoryScreenState extends State<CategoryScreen> {
-  // ===== THEME SAMA HOME =====
   static const Color pinkBg = Color(0xFFF8D7DA);
   static const Color pinkSoft = Color(0xFFF3B8C2);
   static const Color roseDark = Color(0xFFD87A87);
@@ -54,11 +53,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
         ),
       ),
-
-      // ✅ BODY TANPA PATTERN / STACK
       body: Column(
         children: [
-          // ===== SEARCH BAR =====
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
             child: Container(
@@ -106,8 +102,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
               ),
             ),
           ),
-
-          // ===== GRID LIST =====
           Expanded(
             child:
                 categories.isEmpty
@@ -130,8 +124,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
           ),
         ],
       ),
-
-      // ===== FAB THEME HOME =====
       floatingActionButton: Container(
         height: 70,
         width: 70,
@@ -168,7 +160,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
     );
   }
 
-  // ===== GRID CARD CATEGORY =====
   Widget _buildCategoryGridCard(Category category) {
     final c = category.color;
 
@@ -196,7 +187,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
           ),
           child: Stack(
             children: [
-              // icon bubble
               Align(
                 alignment: Alignment.topLeft,
                 child: Container(
@@ -213,8 +203,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   child: Icon(category.icon, color: white, size: 26),
                 ),
               ),
-
-              // actions (edit/delete)
               Align(
                 alignment: Alignment.topRight,
                 child: Row(
@@ -232,8 +220,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   ],
                 ),
               ),
-
-              // title + date
               Align(
                 alignment: Alignment.bottomLeft,
                 child: Column(
@@ -288,7 +274,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
     );
   }
 
-  // ===== EMPTY STATE =====
   Widget _buildEmptyState(BuildContext context, bool reallyEmpty) {
     return Center(
       child: Padding(
@@ -354,24 +339,29 @@ class _CategoryScreenState extends State<CategoryScreen> {
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
+  String _formatDate(DateTime date) => '${date.day}/${date.month}/${date.year}';
 
-  void _navigateToAddCategory(BuildContext context) {
-    Navigator.push(
+  Future<void> _navigateToAddCategory(BuildContext context) async {
+    final res = await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const AddEditCategoryScreen()),
-    ).then((_) => setState(() {}));
+    );
+    if (!mounted) return;
+    if (res == true) setState(() {});
   }
 
-  void _navigateToEditCategory(BuildContext context, Category category) {
-    Navigator.push(
+  Future<void> _navigateToEditCategory(
+    BuildContext context,
+    Category category,
+  ) async {
+    final res = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => AddEditCategoryScreen(category: category),
       ),
-    ).then((_) => setState(() {}));
+    );
+    if (!mounted) return;
+    if (res == true) setState(() {});
   }
 
   void _showDeleteConfirmation(BuildContext context, Category category) {
@@ -412,8 +402,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () {
-                  CategoryManager.removeCategory(category.id);
+                onPressed: () async {
+                  await CategoryManager.removeCategory(category.id);
+                  if (!mounted) return;
                   setState(() {});
                   Navigator.pop(context);
 

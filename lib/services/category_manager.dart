@@ -1,77 +1,23 @@
-import 'package:flutter/material.dart';
-
 import '../models/category.dart';
+import 'category_service.dart';
 
 class CategoryManager {
-  static List<Category> categories = [
-    Category(
-      id: '1',
-      name: 'Makanan',
-      color: Colors.orange,
-      icon: Icons.restaurant,
-      createdAt: DateTime.now(),
-    ),
-    Category(
-      id: '2',
-      name: 'Transportasi',
-      color: Colors.green,
-      icon: Icons.directions_car,
-      createdAt: DateTime.now(),
-    ),
-    Category(
-      id: '3',
-      name: 'Utilitas',
-      color: Colors.purple,
-      icon: Icons.home,
-      createdAt: DateTime.now(),
-    ),
-    Category(
-      id: '4',
-      name: 'Hiburan',
-      color: Colors.pink,
-      icon: Icons.movie,
-      createdAt: DateTime.now(),
-    ),
-    Category(
-      id: '5',
-      name: 'Pendidikan',
-      color: Colors.blue,
-      icon: Icons.school,
-      createdAt: DateTime.now(),
-    ),
-  ];
+  static List<Category> get categories => CategoryService.categories;
 
-  // Tambah kategori baru
-  static void addCategory(Category newCategory) {
-    categories.add(newCategory);
-  }
+  static Future<void> load() => CategoryService.load();
+  static Future<void> save() => CategoryService.save();
 
-  // Update kategori
-  static void updateCategory(String id, Category updatedCategory) {
-    int index = categories.indexWhere((category) => category.id == id);
-    if (index != -1) {
-      categories[index] = updatedCategory;
-    }
-  }
+  static Future<void> addCategory(Category c) => CategoryService.addCategory(c);
 
-  // Hapus kategori
-  static void removeCategory(String id) {
-    categories.removeWhere((category) => category.id == id);
-  }
+  static Future<void> updateCategory(String id, Category c) =>
+      CategoryService.updateCategory(id, c);
 
-  // Cari kategori by ID
-  static Category? getCategoryById(String id) {
-    try {
-      return categories.firstWhere((category) => category.id == id);
-    } catch (e) {
-      return null;
-    }
-  }
+  static Future<void> removeCategory(String id) =>
+      CategoryService.removeCategory(id);
 
-  // Cek apakah nama kategori sudah ada
-  static bool isCategoryNameExists(String name) {
-    return categories.any(
-      (category) => category.name.toLowerCase() == name.toLowerCase(),
-    );
-  }
+  static Category? getCategoryById(String id) =>
+      CategoryService.getCategoryById(id);
+
+  static bool isCategoryNameExists(String name, {String? exceptId}) =>
+      CategoryService.isCategoryNameExists(name, exceptId: exceptId);
 }

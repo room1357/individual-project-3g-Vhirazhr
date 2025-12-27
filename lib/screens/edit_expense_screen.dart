@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../models/category.dart';
 import '../models/expense.dart';
-import '../services/expense_manager.dart';
+import '../services/category_manager.dart';
+import '../services/expense_service.dart';
 
 class EditExpenseScreen extends StatefulWidget {
   final Expense expense;
@@ -24,7 +26,6 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   static const Color darkText = Color(0xFF2D1B2E);
   static const Color patternBg = Color(0xFFFEF7F8);
 
-  // Controller form fields
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -32,13 +33,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   String _selectedCategory = 'Makanan';
   DateTime _selectedDate = DateTime.now();
 
-  final List<String> _categories = [
-    'Makanan',
-    'Transportasi',
-    'Utilitas',
-    'Hiburan',
-    'Pendidikan',
-  ];
+  List<String> get _categories {
+    if (CategoryManager.categories.isEmpty) {
+      return ['Makanan'];
+    }
+    return CategoryManager.categories.map((c) => c.name).toList();
+  }
 
   @override
   void initState() {
@@ -48,6 +48,11 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     _descriptionController.text = widget.expense.description;
     _selectedCategory = widget.expense.category;
     _selectedDate = widget.expense.date;
+
+    if (!_categories.contains(_selectedCategory)) {
+      _selectedCategory =
+          _categories.isNotEmpty ? _categories.first : 'Makanan';
+    }
   }
 
   @override
@@ -103,7 +108,6 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
         ],
       ),
 
-      // ✅ BODY TANPA PATTERN / STACK
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
@@ -111,12 +115,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // ===== HERO PREVIEW HEADER =====
               _buildHeroHeader(),
-
               const SizedBox(height: 14),
 
-              // ===== FORM CARD =====
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
@@ -186,13 +187,26 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                       ),
                       items:
                           _categories.map((category) {
+                            final categoryObj = CategoryManager.categories
+                                .firstWhere(
+                                  (c) => c.name == category,
+                                  orElse:
+                                      () => Category(
+                                        id: '',
+                                        name: category,
+                                        color: Colors.grey,
+                                        icon: Icons.attach_money,
+                                        createdAt: DateTime.now(),
+                                      ),
+                                );
+
                             return DropdownMenuItem<String>(
                               value: category,
                               child: Row(
                                 children: [
                                   Icon(
-                                    _getCategoryIcon(category),
-                                    color: _getCategoryColor(category),
+                                    categoryObj.icon,
+                                    color: categoryObj.color,
                                     size: 18,
                                   ),
                                   const SizedBox(width: 8),
@@ -510,7 +524,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
   }
 
-  // =================== LOGIC (TETAP) ===================
+  // =================== LOGIC (SERVICE) ===================
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
@@ -536,41 +550,46 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     }
   }
 
-  void _updateExpense() {
-    if (_formKey.currentState!.validate()) {
-      final updatedExpense = Expense(
-        id: widget.expense.id,
-        title: _titleController.text,
-        amount: double.parse(_amountController.text),
-        category: _selectedCategory,
-        date: _selectedDate,
-        description: _descriptionController.text,
-      );
+  Future<void> _updateExpense() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      ExpenseManager.updateExpense(widget.expense.id, updatedExpense);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Pengeluaran berhasil diupdate!',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-
-      Navigator.pop(context);
+    final amount = double.tryParse(_amountController.text.trim());
+    if (amount == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Jumlah tidak valid")));
+      return;
     }
+
+    final updatedExpense = Expense(
+      id: widget.expense.id,
+      title: _titleController.text.trim(),
+      amount: amount,
+      category: _selectedCategory,
+      date: _selectedDate,
+      description: _descriptionController.text.trim(),
+    );
+
+    await ExpenseService.updateExpense(widget.expense.id, updatedExpense);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Pengeluaran berhasil diupdate!',
+          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+
+    Navigator.pop(context, true);
   }
 
-  void _deleteExpense() {
+  Future<void> _deleteExpense() async {
     showDialog(
       context: context,
       builder:
@@ -607,8 +626,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () {
-                  ExpenseManager.removeExpense(widget.expense.id);
+                onPressed: () async {
+                  await ExpenseService.removeExpense(widget.expense.id);
+
+                  if (!mounted) return;
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -627,8 +648,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                     ),
                   );
 
-                  Navigator.pop(context);
-                  Navigator.pop(context);
+                  Navigator.pop(context); // tutup dialog
+                  Navigator.pop(context, true); // balik + refresh
                 },
                 child: const Text(
                   'Hapus',

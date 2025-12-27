@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/expense.dart';
-import '../services/expense_manager.dart';
+import '../services/category_manager.dart';
+import '../services/expense_service.dart';
 import 'add_expense_screen.dart';
 import 'edit_expense_screen.dart';
 
@@ -22,8 +23,20 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   static const Color darkText = Color(0xFF2D1B2E);
 
   @override
+  void initState() {
+    super.initState();
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    await ExpenseService.load();
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final List<Expense> expenses = ExpenseManager.expenses;
+    final List<Expense> expenses = ExpenseService.expenses;
 
     return Scaffold(
       backgroundColor: pinkBg,
@@ -240,7 +253,13 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
-            ).then((_) => setState(() {}));
+            ).then((refresh) async {
+              if (refresh == true) {
+                await ExpenseService.load();
+                if (!mounted) return;
+                setState(() {});
+              }
+            });
           },
           child: const Icon(Icons.add_rounded, size: 32, color: white),
         ),
@@ -316,38 +335,22 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     return 'Rp ${total.toStringAsFixed(0)}';
   }
 
-  static Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'makanan':
-        return Colors.orange;
-      case 'transportasi':
-        return Colors.green;
-      case 'utilitas':
-        return Colors.purple;
-      case 'hiburan':
-        return Colors.pink;
-      case 'pendidikan':
-        return Colors.blue;
-      default:
-        return Colors.grey;
-    }
+  static Color _getCategoryColor(String categoryName) {
+    final cat =
+        CategoryManager.categories
+            .where((c) => c.name == categoryName)
+            .toList();
+
+    return cat.isNotEmpty ? cat.first.color : Colors.grey;
   }
 
-  static IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'makanan':
-        return Icons.restaurant;
-      case 'transportasi':
-        return Icons.directions_car;
-      case 'utilitas':
-        return Icons.home;
-      case 'hiburan':
-        return Icons.movie;
-      case 'pendidikan':
-        return Icons.school;
-      default:
-        return Icons.attach_money;
-    }
+  static IconData _getCategoryIcon(String categoryName) {
+    final cat =
+        CategoryManager.categories
+            .where((c) => c.name == categoryName)
+            .toList();
+
+    return cat.isNotEmpty ? cat.first.icon : Icons.attach_money;
   }
 
   void _showExpenseOptions(BuildContext context, Expense expense) {
@@ -403,7 +406,13 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                     MaterialPageRoute(
                       builder: (_) => EditExpenseScreen(expense: expense),
                     ),
-                  ).then((_) => setState(() {}));
+                  ).then((refresh) async {
+                    if (refresh == true) {
+                      await ExpenseService.load();
+                      if (!mounted) return;
+                      setState(() {});
+                    }
+                  });
                 },
                 child: Text(
                   "Edit",
@@ -467,8 +476,10 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () {
-                  ExpenseManager.removeExpense(expense.id);
+                onPressed: () async {
+                  await ExpenseService.removeExpense(expense.id);
+                  await ExpenseService.load();
+                  if (!mounted) return;
                   setState(() {});
                   Navigator.pop(context);
                 },

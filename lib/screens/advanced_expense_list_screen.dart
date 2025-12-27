@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/expense.dart';
+import '../screens/pdf_export_screen.dart';
 import '../services/category_manager.dart';
-import '../services/expense_manager.dart';
+import '../services/expense_service.dart';
 
 class AdvancedExpenseListScreen extends StatefulWidget {
   const AdvancedExpenseListScreen({super.key});
@@ -25,6 +26,7 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
   List<Expense> filteredExpenses = [];
   String selectedCategory = 'Semua';
   final TextEditingController searchController = TextEditingController();
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -34,8 +36,8 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // selalu ambil data terbaru dari manager
-    final expenses = ExpenseManager.expenses;
+    // ✅ selalu ambil data terbaru dari SERVICE
+    final expenses = ExpenseService.expenses;
 
     // list kategori terbaru
     final categories = [
@@ -63,6 +65,24 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
         ),
+        actions: [
+          // Tombol Export PDF
+          IconButton(
+            icon:
+                _isExporting
+                    ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(white),
+                      ),
+                    )
+                    : const Icon(Icons.picture_as_pdf_rounded),
+            onPressed: _isExporting ? null : _exportToPDF,
+            tooltip: 'Export PDF',
+          ),
+        ],
       ),
 
       // ✅ SEMUA DIJADIIN 1 SCROLL
@@ -223,13 +243,10 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
     final total = _calculateTotal(filteredExpenses);
     final avg = _calculateAverage(filteredExpenses);
     final count = "${filteredExpenses.length} item";
-    final daily =
-        "Rp ${ExpenseManager.getAverageDaily(filteredExpenses).toStringAsFixed(0)}";
+    final daily = "Rp ${_getAverageDaily(filteredExpenses).toStringAsFixed(0)}";
     final highest =
-        ExpenseManager.getHighestExpense(filteredExpenses) != null
-            ? ExpenseManager.getHighestExpense(
-              filteredExpenses,
-            )!.formattedAmount
+        _getHighestExpense(filteredExpenses) != null
+            ? _getHighestExpense(filteredExpenses)!.formattedAmount
             : "Rp 0";
 
     return Container(
@@ -404,7 +421,7 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
 
   // ===== TOTAL PER KATEGORI =====
   Widget _buildCategoryTotals() {
-    final totals = ExpenseManager.getTotalByCategory(filteredExpenses);
+    final totals = _getTotalByCategory(filteredExpenses);
     final maxVal =
         totals.isEmpty ? 1.0 : totals.values.reduce((a, b) => a > b ? a : b);
 
@@ -640,22 +657,55 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
   // ===================== LOGIC =====================
 
   void _filterExpenses() {
-    final expenses = ExpenseManager.expenses;
+    final expenses = ExpenseService.expenses;
+    final query = searchController.text.trim().toLowerCase();
 
     setState(() {
-      filteredExpenses = ExpenseManager.searchExpenses(
-        expenses,
-        searchController.text,
-      );
-
       filteredExpenses =
-          filteredExpenses.where((expense) {
+          expenses.where((e) {
+            final matchesQuery =
+                query.isEmpty ||
+                e.title.toLowerCase().contains(query) ||
+                e.description.toLowerCase().contains(query) ||
+                e.category.toLowerCase().contains(query);
+
             final matchesCategory =
-                selectedCategory == 'Semua' ||
-                expense.category == selectedCategory;
-            return matchesCategory;
+                selectedCategory == 'Semua' || e.category == selectedCategory;
+
+            return matchesQuery && matchesCategory;
           }).toList();
+
+      // optional: sort terbaru dulu
+      filteredExpenses.sort((a, b) => b.date.compareTo(a.date));
     });
+  }
+
+  // total per category
+  Map<String, double> _getTotalByCategory(List<Expense> list) {
+    final Map<String, double> totals = {};
+    for (final e in list) {
+      totals[e.category] = (totals[e.category] ?? 0) + e.amount;
+    }
+    return totals;
+  }
+
+  // highest expense
+  Expense? _getHighestExpense(List<Expense> list) {
+    if (list.isEmpty) return null;
+    list.sort((a, b) => b.amount.compareTo(a.amount));
+    return list.first;
+  }
+
+  // average daily (total / jumlah hari unik)
+  double _getAverageDaily(List<Expense> list) {
+    if (list.isEmpty) return 0;
+    final total = list.fold<double>(0, (sum, e) => sum + e.amount);
+    final uniqueDays =
+        list
+            .map((e) => DateTime(e.date.year, e.date.month, e.date.day))
+            .toSet()
+            .length;
+    return uniqueDays == 0 ? 0 : total / uniqueDays;
   }
 
   Color _getCategoryColor(String category) {
@@ -748,6 +798,50 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
               ),
             ],
           ),
+    );
+  }
+
+  // ===================== PDF EXPORT =====================
+  Future<void> _exportToPDF() async {
+    if (filteredExpenses.isEmpty) {
+      _showSnackBar('Tidak ada data untuk diexport');
+      return;
+    }
+
+    setState(() {
+      _isExporting = true;
+    });
+
+    try {
+      // Navigasi ke screen PDF preview
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => PdfExportScreen(
+                filteredExpenses: filteredExpenses,
+                selectedCategory: selectedCategory,
+                searchQuery: searchController.text,
+              ),
+        ),
+      );
+    } catch (e) {
+      _showSnackBar('Error: ${e.toString()}');
+    } finally {
+      setState(() {
+        _isExporting = false;
+      });
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: maroon,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
   }
 
